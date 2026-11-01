@@ -1,0 +1,40 @@
+{
+  "name": "ai-agent-farm",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "tsx --test src/state.test.ts",
+    "bitget:check": "tsx scripts/bitget-check.ts",
+    "bitget:mcp": "tsx scripts/bitget-mcp-check.ts",
+    "bitget:test": "tsx --test scripts/bitget.test.ts",
+    "bitget:validate": "node scripts/bitget-validate.mjs",
+    "bitget:typecheck": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck scripts/bitget.ts scripts/bitget-check.ts scripts/bitget-mcp-check.ts scripts/bitget.test.ts"
+  },
+  "dependencies": {
+    "@bitget-ai/bitget-agent-sdk": "3.3.1",
+    "@react-three/drei": "^10.7.0",
+    "@react-three/fiber": "^9.3.0",
+    "@tailwindcss/vite": "^4.1.13",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.13",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@bitget-ai/bitget-agent-mcp": "3.3.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@types/node": "^24.5.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tsx": "^4.20.5",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.7"
+  }
+}

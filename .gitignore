@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tsbuildinfo
+farm-desktop.png
+farm-mobile.png
+farm-night.png
+.env
+.env.*
+!.env.example
