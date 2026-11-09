@@ -4,6 +4,25 @@ import { createDemo, reduceFarm } from './state'
 import { currentTask } from './types'
 import { parseSnapshot } from './adapters'
 import { dayPeriod } from './daylight'
+import { coastX, riverChannel, riverPoints, seaLevel, terrainHeight } from './terrain'
+
+test('coastal farm keeps agent names, flat navigation and a continuous shoreline', () => {
+  assert.deepEqual(createDemo().agents.map(agent => agent.name), ['acong', 'jugar', 'oren', 'abu', 'paramengeow'])
+  for (let x = -25; x <= 25; x += 5) for (let z = -23; z <= 23; z += 2) assert.ok(Math.abs(terrainHeight(x, z)) < 1e-12)
+  for (let x = -160; x <= 190; x += 10) for (let z = -160; z <= 160; z += 10) assert.ok(Number.isFinite(terrainHeight(x, z)))
+  for (const z of [-80, -24, 0, 30, 60]) {
+    const x = coastX(z)
+    assert.ok(Math.abs(terrainHeight(x, z) - seaLevel) < 1e-4)
+    assert.ok(terrainHeight(x - 0.01, z) > seaLevel)
+    assert.ok(terrainHeight(x + 0.01, z) < seaLevel)
+  }
+  assert.ok(terrainHeight(42, -22) > seaLevel)
+  riverPoints.forEach(([x, z, height], i) => {
+    assert.equal(riverChannel(x, z).height, height)
+    if (i) assert.ok(height <= riverPoints[i - 1][2], 'river must flow downhill')
+    assert.ok(terrainHeight(x, z) < height, 'channel bed must stay below water')
+  })
+})
 
 test('farm follows local morning/day/evening/night boundaries', () => {
   for (const [hour, expected] of [[0, 'night'], [4, 'night'], [5, 'morning'], [10, 'morning'], [11, 'day'], [14, 'day'], [15, 'evening'], [17, 'evening'], [18, 'night'], [23, 'night']] as const) {

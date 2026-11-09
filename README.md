@@ -23,16 +23,17 @@ Dev server mengikat `0.0.0.0` agar bisa diakses dari perangkat lokal. Untuk hany
 
 ## Demo
 
-- 5 agent awal: Atlas (coding), Sage (riset), Piper (data), Scout (monitoring), Nova (design).
-- Atlas dan Sage bekerja; Piper menunggu hasil Sage; Scout memiliki error yang bisa dicoba ulang; Nova beristirahat.
+- 5 agent awal: acong (coding), jugar (riset), oren (data), abu (monitoring), paramengeow (design).
+- acong dan jugar bekerja; oren menunggu hasil jugar; abu memiliki error yang bisa dicoba ulang; paramengeow beristirahat.
 - Tambah agent, beri tugas dengan dependensi opsional, pause, resume, cancel, coba ulang. Maksimal 12 agent demo.
 - Tugas baru memulai perjalanan, lalu tanaman bertumbuh mengikuti progress. Penyelesaian mengirim petani membawa keranjang ke gudang, lalu pulang beristirahat.
-- Klik petani atau sidebar untuk detail, progress, waktu mulai, log. Klik nomor/petak lahan untuk proyek dan daftar agent.
+- Klik petani atau sidebar untuk detail, progress, waktu mulai, log. Klik petak lahan atau tombol lahan pada detail tugas untuk proyek dan daftar agent.
 - Farm tampil lebih luas; detail agent dibuka saat dipilih, activity feed awalnya dilipat. Feed memiliki timestamp; klik baris untuk memusatkan kamera.
 - Waktu farm mengikuti **jam lokal perangkat**: pagi 05:00–10:59, siang 11:00–14:59, sore 15:00–17:59, malam 18:00–04:59. Jam diperiksa setiap 10 detik dan saat tab aktif kembali. Tidak ada siklus dipercepat atau pergantian manual. Pagi bercahaya hangat, sore keemasan; malam menampilkan bulan, bintang, jendela menyala, dan lentera. Tidak mengubah tugas agent. Kualitas rendah menampilkan lentera tanpa point light tambahan.
 - Agent berbentuk **kucing low-poly**, dengan telinga, kumis, kaki berbulu, ekor bergerak, serta alat kerja. Avatar sidebar dan detail juga kucing.
-- Mouse: drag kiri untuk putar, scroll untuk zoom, drag kanan untuk pan. Sentuh: satu jari putar, dua jari zoom/pan.
-- Tombol kamera: zoom, putar 45°, reset. Pengaturan menyediakan 3 kualitas, label, dan simulasi koneksi terputus.
+- Lingkungan pesisir pegunungan: farm datar menyambung ke bukit, pantai, sungai berjembatan, dermaga dan mercusuar bercahaya malam. Hutan menggunakan instancing; tanpa dependency baru.
+- Mouse: drag kiri untuk putar, scroll untuk zoom. Sentuh: satu jari putar, dua jari zoom. Pan dinonaktifkan; elevasi dan zoom dibatasi agar kamera tetap aman.
+- Tombol kamera: zoom, putar 45°, reset. Pengaturan menyediakan 3 kualitas dan simulasi koneksi terputus. Label mengambang dan petunjuk viewport dihapus.
 - WebGL tidak didukung atau context hilang: fallback 2D; seluruh kontrol tugas tetap bisa digunakan.
 - Demo tidak menjalankan model AI atau tugas sungguhan. State berada di memori tab, dimulai ulang saat reload. Tab background memperlambat simulasi secara sengaja; progress bukan waktu kerja nyata.
 - Font Google bersifat opsional; tanpa internet menggunakan sans-serif sistem.

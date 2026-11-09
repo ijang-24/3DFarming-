@@ -7,16 +7,16 @@ export type Command =
   | { type: 'tick'; now: number }
 
 export function createDemo(now = Date.now()): FarmState {
-  const names = ['Atlas', 'Sage', 'Piper', 'Scout', 'Nova']
+  const names = ['acong', 'jugar', 'oren', 'abu', 'paramengeow']
   const roles: Role[] = ['Coding', 'Riset', 'Data', 'Monitoring', 'Design']
   const tools: Agent['tool'][] = ['water', 'hoe', 'rake', 'shovel', 'basket']
   const agents = names.map((name, i) => ({ id: `a${i + 1}`, name, role: roles[i], color: agentColors[i], tool: tools[i], plotId: `p${i + 1}` }))
   const makeTask = (i: number, title: string, status: Task['status'], progress: number, duration: number, dependencyId?: string): Task => ({ id: `t${i}`, agentId: `a${i}`, title, status, progress, duration, elapsed: 0, dependencyId, startedAt: now - 120000, updatedAt: now, logs: [{ at: now - 10000, message: status === 'error' ? 'Layanan upstream tidak merespons. Coba ulang tugas.' : 'Workspace siap. Status agent tersinkron.' }] })
   return { agents, tasks: [makeTask(1, 'Membangun authentication API', 'running', 42, 190), makeTask(2, 'Riset arsitektur multi-agent', 'running', 68, 160), makeTask(3, 'Menyiapkan pipeline dataset', 'waiting', 12, 130, 't2'), makeTask(4, 'Memeriksa kesehatan endpoint', 'error', 27, 100)], activities: [
-    { id: 'e1', agentId: 'a4', at: now - 10000, message: 'Scout: koneksi endpoint timeout', kind: 'error' },
-    { id: 'e2', agentId: 'a1', at: now - 45000, message: 'Atlas mulai membangun authentication API', kind: 'info' },
-    { id: 'e3', agentId: 'a3', at: now - 70000, message: 'Piper menunggu hasil riset Sage', kind: 'info' },
-    { id: 'e4', agentId: 'a2', at: now - 120000, message: 'Sage memulai riset arsitektur', kind: 'info' },
+    { id: 'e1', agentId: 'a4', at: now - 10000, message: 'abu: koneksi endpoint timeout', kind: 'error' },
+    { id: 'e2', agentId: 'a1', at: now - 45000, message: 'acong mulai membangun authentication API', kind: 'info' },
+    { id: 'e3', agentId: 'a3', at: now - 70000, message: 'oren menunggu hasil riset jugar', kind: 'info' },
+    { id: 'e4', agentId: 'a2', at: now - 120000, message: 'jugar memulai riset arsitektur', kind: 'info' },
   ], now }
 }
 

@@ -1,14 +1,16 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { Html, OrbitControls, OrthographicCamera } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { DayPeriod } from './daylight'
-import { agentStatus, currentTask, plots, statusText, type Agent, type FarmState, type Plot, type Status } from './types'
+import { agentStatus, currentTask, plots, type Agent, type FarmState, type Plot, type Status } from './types'
+import CoastalLandscape from './CoastalLandscape'
+import { terrainHeight } from './terrain'
 
 export type Quality = 'low' | 'medium' | 'high'
 export interface CameraAction { kind: 'home' | 'zoomIn' | 'zoomOut' | 'rotate' | 'focus'; id?: string; serial: number }
-interface Props { farm: FarmState; selected: string | null; onAgent: (id: string) => void; onPlot: (id: string) => void; quality: Quality; period: DayPeriod; cameraAction: CameraAction; labels: boolean; onReady: () => void; onLost: () => void }
+interface Props { farm: FarmState; selected: string | null; onAgent: (id: string) => void; onPlot: (id: string) => void; quality: Quality; period: DayPeriod; cameraAction: CameraAction; onReady: () => void; onLost: () => void }
 const positions = new Map<string, THREE.Vector3>()
 const c = { grass: '#94b96b', edge: '#ccac7b', dirt: '#846042', path: '#dcccaa', wood: '#a98050', paleWood: '#dec69c', leaf: '#678e4c', leafLight: '#83a45b', trunk: '#86633e', roof: '#cf7658', wall: '#f6e4ba', water: '#7abdc4' }
 
@@ -31,22 +33,60 @@ function Fence({ x, z, length, rotate = false }: { x: number; z: number; length:
   </group>
 }
 function House({ barn = false, night }: { barn?: boolean; night: boolean }) {
-  const x = barn ? 7 : -6, z = -7
-  return <group position={[x, 0, z]}>
-    <Box position={[0, 1.25, 0]} size={[4.3, 2.5, 3.5]} color={barn ? '#c77b60' : c.wall}/>
-    <mesh position={[0, 2.75, 0]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[2.75, 2.75, 4.9, 3]}/><meshStandardMaterial color={barn ? '#718184' : c.roof}/></mesh>
-    <Box position={[0, 0.93, 1.79]} size={[barn ? 2 : 0.85, 1.85, 0.09]} color={barn ? '#956247' : '#77958b'}/>
+  const height = barn ? 3.1 : 2.6, rise = barn ? 1.65 : 1.35
+  const roofAngle = Math.atan2(rise, 2.5), roofLength = Math.hypot(2.5, rise)
+  const gable = useMemo(() => new THREE.Shape([new THREE.Vector2(-2.15, 0), new THREE.Vector2(2.15, 0), new THREE.Vector2(0, rise)]), [rise])
+  return <group position={[barn ? 7 : -6, 0, -7]} name={barn ? 'timber-warehouse' : 'mountain-cottage'}>
+    <Box position={[0, 0.15, 0]} size={[4.6, 0.3, 3.8]} color="#aaa18c"/>
+    <Box position={[0, height / 2 + 0.15, 0]} size={[4.3, height, 3.5]} color={barn ? '#ac6348' : c.wall}/>
+    {[-1, 1].map(side => <group key={side}>
+      <mesh position={[0, height + 0.15, side * 1.76]} rotation={[0, side < 0 ? Math.PI : 0, 0]} castShadow><shapeGeometry args={[gable]}/><meshStandardMaterial color={barn ? '#ac6348' : c.wall} side={THREE.DoubleSide}/></mesh>
+      <Box position={[side * 1.25, height + 0.15 + rise / 2, 0]} size={[roofLength, 0.17, 4.3]} rotation={[0, 0, -side * roofAngle]} color={barn ? '#526c70' : '#bd654d'}/>
+      <Box position={[side * 2.09, height / 2 + 0.15, 1.79]} size={[0.16, height, 0.14]} color={c.paleWood}/>
+      <Box position={[side * 2.18, 1.1, -0.35]} size={[0.12, 1.25, 1]} color={barn ? '#764b37' : '#6d9090'}/>
+      <Box position={[side * 2.25, 1.1, -0.35]} size={[0.07, 1.35, 0.07]} color={c.paleWood}/>
+      <Box position={[side * 2.25, 1.1, -0.35]} size={[0.07, 0.07, 1.1]} color={c.paleWood}/>
+    </group>)}
+    <Box position={[0, height + 0.15 + rise, 0]} size={[0.18, 0.17, 4.4]} color={barn ? '#3f585c' : '#8d493b'}/>
+    <Box position={[0, height + 0.1, 1.85]} size={[4.5, 0.16, 0.16]} color={c.paleWood}/>
     {barn ? <>
-      <Box position={[-0.48, 0.9, 1.85]} size={[0.07, 1.7, 0.06]} color={c.paleWood} rotation={[0, 0, -0.5]}/>
-      <Box position={[0.48, 0.9, 1.85]} size={[0.07, 1.7, 0.06]} color={c.paleWood} rotation={[0, 0, 0.5]}/>
-      <Box position={[0, 2.05, 1.83]} size={[1.1, 0.1, 0.1]} color={c.paleWood}/>
+      {[-1, 1].map(side => <group key={side}>
+        <Box position={[side * 0.63, 1.19, 1.82]} size={[1.22, 2.1, 0.14]} color="#77513a"/>
+        {[-1, 1].map(diagonal => <Box key={diagonal} position={[side * 0.63, 1.19, 1.92]} size={[0.095, 2.32, 0.07]} color={c.paleWood} rotation={[0, 0, diagonal * 0.48]}/>)}
+        <Box position={[side * 1.35, 1.23, 1.94]} size={[0.15, 2.35, 0.16]} color={c.paleWood}/>
+        <Box position={[side * 0.15, 1.15, 1.99]} size={[0.08, 0.28, 0.07]} color="#3e4842"/>
+        {[-1, 0, 1].map(i => <Box key={i} position={[side * 2.17, 0.75 + i * 0.45, 0]} size={[0.08, 0.09, 3.5]} color="#c58762"/>)}
+      </group>)}
+      <Box position={[0, 2.42, 1.96]} size={[2.85, 0.19, 0.2]} color={c.paleWood}/>
+      <Box position={[0, 3.48, 1.82]} size={[0.95, 0.83, 0.12]} color="#463e32"/>
+      <Box position={[0, 3.48, 1.93]} size={[0.08, 0.9, 0.07]} color={c.paleWood}/>
+      <Box position={[0, 3.48, 1.93]} size={[1.02, 0.08, 0.07]} color={c.paleWood}/>
+      <Box position={[0, 0.07, 2.32]} size={[3.2, 0.14, 1.1]} color="#b5ab93"/>
+      {[0, 1].map(i => <group key={i} position={[3, i * 0.62, 0.75 - i * 0.2]}>
+        <Box position={[0, 0.32, 0]} size={[1.3, 0.62, 1]} color={i ? '#e1c472' : '#d2ae59'}/>
+        {[-0.35, 0.35].map(x => <Box key={x} position={[x, 0.32, 0]} size={[0.055, 0.65, 1.03]} color="#a68b4a"/>)}
+      </group>)}
+      <Box position={[-2.85, 0.36, 0.8]} size={[0.85, 0.72, 0.85]} color={c.wood}/>
+      <Box position={[-2.85, 0.36, 1.24]} size={[0.95, 0.09, 0.07]} color={c.paleWood} rotation={[0, 0, 0.62]}/>
     </> : <>
-      {[-1.4, 1.4].map(a => <group key={a}><mesh position={[a, 1.4, 1.8]}><boxGeometry args={[0.72, 0.77, 0.09]}/><meshStandardMaterial color={night ? '#ffd89b' : '#759aa1'} emissive="#ffbb65" emissiveIntensity={night ? 1.5 : 0}/></mesh><Box position={[a, 1.4, 1.86]} size={[0.06, 0.84, 0.05]} color={c.wall}/><Box position={[a, 1.4, 1.86]} size={[0.8, 0.06, 0.05]} color={c.wall}/><Box position={[a, 0.87, 1.92]} size={[0.95, 0.21, 0.32]} color={c.wood}/></group>)}
-      <Box position={[1.3, 3.3, -0.7]} size={[0.55, 1.8, 0.6]} color="#c0a68a"/>
-      <Box position={[0, 0.1, 2.1]} size={[1.3, 0.2, 0.65]} color="#bbb6a0"/>
+      <Box position={[0, 1.13, 1.82]} size={[0.9, 1.95, 0.13]} color="#527b70"/>
+      <Box position={[0, 2.16, 1.91]} size={[1.12, 0.12, 0.16]} color={c.paleWood}/>
+      <Box position={[0.29, 1.1, 1.92]} size={[0.08, 0.08, 0.08]} color="#d8b566"/>
+      {[-1.4, 1.4].map(x => <group key={x}>
+        <mesh position={[x, 1.45, 1.82]}><boxGeometry args={[0.72, 0.83, 0.1]}/><meshStandardMaterial color={night ? '#ffda99' : '#81a7a5'} emissive="#ffbb65" emissiveIntensity={night ? 1.5 : 0}/></mesh>
+        {[-0.49, 0.49].map(offset => <Box key={offset} position={[x + offset, 1.45, 1.86]} size={[0.2, 0.94, 0.12]} color="#729078"/>)}
+        <Box position={[x, 1.45, 1.91]} size={[0.06, 0.92, 0.07]} color={c.wall}/>
+        <Box position={[x, 1.45, 1.91]} size={[0.82, 0.06, 0.07]} color={c.wall}/>
+        <Box position={[x, 0.9, 1.99]} size={[1.06, 0.23, 0.38]} color={c.wood}/>
+        {[-0.32, 0, 0.32].map((offset, i) => <mesh key={offset} position={[x + offset, 1.08, 2.02]}><icosahedronGeometry args={[0.16, 0]}/><meshStandardMaterial color={i % 2 ? '#d89683' : '#8da565'}/></mesh>)}
+      </group>)}
+      <Box position={[0, 0.13, 2.45]} size={[4.9, 0.26, 1.35]} color={c.paleWood}/>
+      <Box position={[0, 0.06, 3.2]} size={[1.5, 0.12, 0.45]} color="#b5ad99"/>
+      <Box position={[0, 2.55, 2.4]} size={[5.1, 0.14, 1.6]} color="#bd654d" rotation={[-0.12, 0, 0]}/>
+      {[-2.2, 2.2].map(x => <Box key={x} position={[x, 1.3, 2.92]} size={[0.15, 2.4, 0.15]} color={c.paleWood}/>)}
+      <Box position={[1.25, 3.65, -0.65]} size={[0.52, 1.65, 0.58]} color="#a29480"/>
+      <Box position={[1.25, 4.49, -0.65]} size={[0.7, 0.16, 0.75]} color="#d3c5a9"/>
     </>}
-    <Html position={[0, 3.7, 0]} center zIndexRange={[2, 0]}><span className="building-label">{barn ? 'GUDANG HASIL' : 'FARMHOUSE'}</span></Html>
-    {barn && <><Box position={[3, 0.4, 0.8]} size={[1.1, 0.8, 0.85]} color="#d9b65e"/><Box position={[2.8, 0.3, 1.8]} size={[1.2, 0.6, 0.85]} color="#e0c273"/>{[-0.25, 0.25].map(v => <Box key={v} position={[3 + v, 0.4, 1.24]} size={[0.05, 0.8, 0.04]} color="#ad9454"/>)}</>}
   </group>
 }
 function Windmill({ reduced }: { reduced: boolean }) {
@@ -191,9 +231,6 @@ function Field({ plot, farm, index, onClick }: { plot: Plot; farm: FarmState; in
     <Box position={[0, 0.11, 0]} size={[4.45, 0.14, 3.25]} color={c.dirt}/>
     {[-1.2, -0.4, 0.4, 1.2].map(z => <Box key={z} position={[0, 0.195, z]} size={[4.2, 0.04, 0.1]} color="#6f5039"/>)}
     {Array.from({ length: 24 }, (_, i) => <Crop key={i} index={i} x={-1.8 + i % 6 * 0.7} z={-1.15 + Math.floor(i / 6) * 0.77} progress={progress} kind={index}/>)}
-    <Box position={[-2.1, 0.4, 1.95]} size={[0.08, 0.8, 0.08]} color={c.wood}/>
-    <Box position={[-2.1, 0.8, 1.95]} size={[0.7, 0.34, 0.09]} color={c.paleWood}/>
-    <Html position={[-2.1, 0.83, 2.02]} center zIndexRange={[2, 0]}><button className="plot-number" aria-label={`Lihat ${plot.name}`} onClick={e => { e.stopPropagation(); onClick() }}>{String(index + 1).padStart(2, '0')}</button></Html>
   </group>
 }
 function ToolModel({ tool }: { tool: Agent['tool'] }) {
@@ -201,7 +238,7 @@ function ToolModel({ tool }: { tool: Agent['tool'] }) {
   if (tool === 'basket') return <group><Box position={[0, 0, 0]} size={[0.52, 0.32, 0.4]} color="#b48b56"/><mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.23, 0.025, 5, 10, Math.PI]}/><meshStandardMaterial color="#87633e"/></mesh><mesh position={[0, 0.19, 0]}><sphereGeometry args={[0.14, 6, 5]}/><meshStandardMaterial color="#dc9c4f"/></mesh></group>
   return <group rotation={[0, 0, -0.35]}><Box position={[0, 0, 0]} size={[0.055, 1.2, 0.055]} color="#a37b48"/><Box position={[0, -0.58, tool === 'hoe' ? 0.13 : 0]} size={tool === 'rake' ? [0.45, 0.09, 0.11] : [0.26, 0.3, 0.08]} color="#8d9c9b"/>{tool === 'rake' && [-0.17, 0, 0.17].map(x => <Box key={x} position={[x, -0.7, 0]} size={[0.04, 0.2, 0.04]} color="#8d9c9b"/>)}</group>
 }
-function Farmer({ agent, farm, selected, onClick, labels, reduced }: { agent: Agent; farm: FarmState; selected: boolean; onClick: () => void; labels: boolean; reduced: boolean }) {
+function Farmer({ agent, farm, selected, onClick, reduced }: { agent: Agent; farm: FarmState; selected: boolean; onClick: () => void; reduced: boolean }) {
   const root = useRef<THREE.Group>(null), body = useRef<THREE.Group>(null), arm = useRef<THREE.Group>(null)
   const leftLeg = useRef<THREE.Group>(null), rightLeg = useRef<THREE.Group>(null), tail = useRef<THREE.Group>(null)
   const status = agentStatus(farm, agent.id), task = currentTask(farm, agent.id)
@@ -229,7 +266,6 @@ function Farmer({ agent, farm, selected, onClick, labels, reduced }: { agent: Ag
     if (tail.current) tail.current.rotation.z = reduced ? 0 : Math.sin(time * (moving ? 7 : 2)) * 0.35
     positions.set(agent.id, pos)
   })
-  const badge = { running: '●', walking: '↗', idle: '○', waiting: '◷', paused: 'Ⅱ', completed: '✓', error: '!', cancelled: '×' }[status]
   return <group ref={root} position={initial.current} onClick={e => { e.stopPropagation(); onClick() }} onPointerOver={() => { document.body.style.cursor = 'pointer' }} onPointerOut={() => { document.body.style.cursor = 'auto' }}>
     {selected && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]}><ringGeometry args={[0.52, 0.6, 32]}/><meshBasicMaterial color="#fff9d4" side={THREE.DoubleSide}/></mesh>}
     <group ref={body}>
@@ -257,7 +293,6 @@ function Farmer({ agent, farm, selected, onClick, labels, reduced }: { agent: Ag
       <Box position={[-0.4, 0.82, 0]} size={[0.2, 0.5, 0.23]} color={agent.color}/>
       <Box position={[-0.4, 0.55, 0]} size={[0.18, 0.16, 0.21]} color={fur}/>
     </group>
-    {labels && <Html position={[0, 2.35, 0]} center zIndexRange={[9, 3]}><button onClick={e => { e.stopPropagation(); onClick() }} className={`farmer-label ${selected ? 'selected' : ''}`} aria-label={`${agent.name}, ${statusText[status]}`}><b>{agent.name}</b><span className={`label-state ${status}`}>{badge} {statusText[status]}</span>{status === 'running' && task?.progress != null && <span className="label-track"><i style={{ width: `${task.progress}%` }}/></span>}</button></Html>}
   </group>
 }
 function Clouds({ reduced }: { reduced: boolean }) {
@@ -269,32 +304,55 @@ function CameraRig({ action }: { action: CameraAction }) {
   const controls = useRef<OrbitControlsImpl>(null)
   const { camera, size } = useThree()
   const target = useRef<THREE.Vector3 | null>(null)
-  useEffect(() => {
-    const cam = camera as THREE.OrthographicCamera
-    cam.zoom = Math.min(size.width / 58, size.height / 41)
-    cam.updateProjectionMatrix()
-  }, [camera, size.width, size.height])
+  const home = () => {
+    const center = new THREE.Vector3(7, 2, -9)
+    const distance = Math.max(73, 25 / Math.tan(Math.PI / 8) / (size.width / size.height))
+    camera.position.set(12, 25, 62).sub(center).normalize().multiplyScalar(distance).add(center)
+    target.current = center
+  }
+  useEffect(home, [camera, size.width, size.height])
   useEffect(() => {
     const ctrl = controls.current
     if (!ctrl) return
-    if (action.kind === 'home') { camera.position.set(25, 28, 32); target.current = new THREE.Vector3(0, 0, 0); const cam = camera as THREE.OrthographicCamera; cam.zoom = Math.min(size.width / 58, size.height / 41); cam.updateProjectionMatrix() }
+    if (action.kind === 'home') home()
     else if (action.kind === 'focus' && action.id) { const p = positions.get(action.id); if (p) target.current = p.clone() }
     else if (action.kind === 'rotate') { const offset = camera.position.clone().sub(ctrl.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4); camera.position.copy(ctrl.target).add(offset); ctrl.update() }
-    else if (action.kind === 'zoomIn' || action.kind === 'zoomOut') { const cam = camera as THREE.OrthographicCamera; cam.zoom = THREE.MathUtils.clamp(cam.zoom * (action.kind === 'zoomIn' ? 1.2 : 0.8), 8, 100); cam.updateProjectionMatrix() }
+    else if (action.kind === 'zoomIn' || action.kind === 'zoomOut') { const offset = camera.position.clone().sub(ctrl.target); offset.setLength(THREE.MathUtils.clamp(offset.length() * (action.kind === 'zoomIn' ? 0.8 : 1.2), 26, 180)); camera.position.copy(ctrl.target).add(offset); ctrl.update() }
   }, [action, camera, size.width, size.height])
   useFrame((_, delta) => {
-    if (!target.current || !controls.current) return
-    const difference = target.current.clone().sub(controls.current.target).multiplyScalar(Math.min(delta * 5, 1))
-    camera.position.add(difference); controls.current.target.add(difference)
-    if (controls.current.target.distanceTo(target.current) < 0.02) target.current = null
-    controls.current.update()
+    const ctrl = controls.current
+    if (!ctrl) return
+    if (target.current) {
+      const difference = target.current.clone().sub(ctrl.target).multiplyScalar(Math.min(delta * 5, 1))
+      camera.position.add(difference); ctrl.target.add(difference)
+      if (ctrl.target.distanceTo(target.current) < 0.02) target.current = null
+    }
+    const floor = Math.max(terrainHeight(camera.position.x, camera.position.z), -9) + 4
+    camera.position.y = Math.max(camera.position.y, floor)
+    ctrl.update()
   })
-  return <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={0.08} minZoom={8} maxZoom={100} minPolarAngle={0.25} maxPolarAngle={Math.PI / 2.5} touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }} onStart={() => { target.current = null }}/>
+  return <OrbitControls ref={controls} target={[7, 2, -9]} makeDefault enablePan={false} enableDamping dampingFactor={0.08} minDistance={26} maxDistance={180} minPolarAngle={0.5} maxPolarAngle={1.3} touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }} onStart={() => { target.current = null }}/>
+}
+function CoastalSky({ period }: { period: DayPeriod }) {
+  const top = period === 'night' ? '#152945' : period === 'evening' ? '#b5b7cb' : '#94bfce'
+  const horizon = period === 'night' ? '#6a8291' : period === 'evening' ? '#efd4af' : '#e6e5cf'
+  const geometry = useMemo(() => {
+    const sphere = new THREE.SphereGeometry(2000, 32, 24), colors: number[] = []
+    const upper = new THREE.Color(top), lower = new THREE.Color(horizon)
+    for (let i = 0; i < sphere.attributes.position.count; i++) {
+      const color = lower.clone().lerp(upper, THREE.MathUtils.smoothstep(sphere.attributes.position.getY(i) / 2000, -0.08, 0.55))
+      colors.push(color.r, color.g, color.b)
+    }
+    sphere.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+    return sphere
+  }, [top, horizon])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return <mesh geometry={geometry}><meshBasicMaterial side={THREE.BackSide} vertexColors fog={false} toneMapped={false} depthWrite={false}/></mesh>
 }
 function World(props: Props) {
   const night = props.period === 'night'
   const morning = props.period === 'morning', evening = props.period === 'evening'
-  const sky = night ? '#182638' : morning ? '#e9dfcc' : evening ? '#e4c6b5' : '#e8ede4'
+  const sky = night ? '#6a8291' : evening ? '#efd4af' : '#e6e5cf'
   const sunColor = night ? '#b9d2ff' : evening ? '#ffb577' : morning ? '#ffe0a0' : '#fff0d5'
   const sunPosition: [number, number, number] = night ? [8, 20, -8] : evening ? [16, 9, 4] : morning ? [-16, 10, 8] : [-8, 20, 8]
   const [reduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -302,11 +360,11 @@ function World(props: Props) {
   useEffect(() => { props.onReady() }, [props.onReady])
   return <>
     <color attach="background" args={[sky]}/>
+    <fog attach="fog" args={[sky, 140, 360]}/>
     <ambientLight intensity={night ? 0.55 : 1.3} color={night ? '#a8c3ef' : '#ffffff'}/><hemisphereLight args={[night ? '#9ab8eb' : '#fff1d8', night ? '#34485d' : '#839f72', night ? 0.65 : 1.1]}/>
     <directionalLight position={sunPosition} intensity={night ? 1.1 : evening ? 1.8 : 2.4} color={sunColor} castShadow={props.quality !== 'low'} shadow-mapSize={props.quality === 'high' ? 2048 : 1024} shadow-camera-left={-34} shadow-camera-right={34} shadow-camera-top={34} shadow-camera-bottom={-34} shadow-normalBias={0.07}/>
-    <Box position={[0, -1, 0]} size={[46, 1.6, 42]} color={c.edge}/>
-    <Box position={[0, -0.12, 0]} size={[46.2, 0.25, 42.2]} color={c.grass}/>
-    <mesh position={[0, -1.85, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[300, 300]}/><meshBasicMaterial color={sky}/></mesh>
+    <CoastalSky period={props.period}/>
+    <CoastalLandscape period={props.period} low={props.quality === 'low'} reduced={reduced}/>
     <Box position={[0, 0.035, -2.7]} size={[22, 0.08, 1.25]} color={c.path}/>
     <Box position={[-3, 0.04, 4]} size={[1.05, 0.08, 13.5]} color={c.path}/>
     <Box position={[3, 0.04, 4]} size={[1.05, 0.08, 13.5]} color={c.path}/>
@@ -338,7 +396,7 @@ function World(props: Props) {
     </group>)}
     <group position={[17, 0, 10]}><mesh rotation={[-Math.PI / 2, 0, 0]} scale={[1, 1.5, 1]}><circleGeometry args={[2.2, 12]}/><meshStandardMaterial color={c.water}/></mesh><Box position={[0, 0.13, 0]} size={[1.1, 0.16, 6.8]} color={c.wood}/></group>
     {plots.map((plot, i) => <Field key={plot.id} plot={plot} farm={props.farm} index={i} onClick={() => props.onPlot(plot.id)}/>)}
-    {props.farm.agents.map(agent => <Farmer key={agent.id} agent={agent} farm={props.farm} selected={props.selected === agent.id} onClick={() => props.onAgent(agent.id)} labels={props.labels} reduced={reduced}/>)}
+    {props.farm.agents.map(agent => <Farmer key={agent.id} agent={agent} farm={props.farm} selected={props.selected === agent.id} onClick={() => props.onAgent(agent.id)} reduced={reduced}/>)}
     <Box position={[-2, 0.38, -6.5]} size={[1.1, 0.76, 1.1]} color="#b9a28a"/>
     <mesh position={[-2, 0.8, -6.5]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.4, 12]}/><meshStandardMaterial color={c.water}/></mesh>
     {Array.from({ length: 22 }, (_, i) => { const x = Math.sin(i * 32.1) * 12, z = Math.cos(i * 19.3) * 11; if (Math.abs(x) < 10 && z > -10 && z < 9) return null; return <group key={i} position={[x, 0, z]}><Box position={[0, 0.18, 0]} size={[0.035, 0.36, 0.035]} color="#6b9046"/><mesh position={[0, 0.39, 0]}><icosahedronGeometry args={[0.11, 0]}/><meshStandardMaterial color={i % 2 ? '#f3d484' : '#f1e8bc'}/></mesh></group> })}
@@ -348,7 +406,7 @@ function World(props: Props) {
 }
 export default function FarmScene(props: Props) {
   return <Canvas shadows={props.quality !== 'low'} dpr={props.quality === 'low' ? 1 : props.quality === 'medium' ? [1, 1.5] : [1, 2]} gl={{ antialias: props.quality !== 'low', powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); props.onLost() }, { once: true }) }}>
-    <OrthographicCamera makeDefault position={[25, 28, 32]} zoom={25} near={0.1} far={500}/>
+    <PerspectiveCamera makeDefault position={[12, 25, 62]} fov={45} near={0.2} far={3000}/>
     <Suspense fallback={null}><World {...props}/></Suspense>
   </Canvas>
 }
